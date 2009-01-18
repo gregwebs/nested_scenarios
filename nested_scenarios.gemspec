@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.homepage = "http://github.com/josevalim/nested_scenarios"
   s.description = "FixtureScenarios, FixtureScenariosBuilder, Yaml and Ruby in one big mix for Rails"
   s.has_rdoc = true
-  s.authors  = [ "José Valim" ]
+  s.authors  = [ "José Valim", "Tom Preston-Werner", "Chris Wanstrath" ]
   s.files    = [
     "MIT-LICENSE",
     "README",
