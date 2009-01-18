@@ -10,7 +10,11 @@ namespace :db do
       # while building scenarios
       ActionMailer::Base.delivery_method = :test
 
-      Dir.glob(NestedScenarios::Builder.fixtures_dir + '/**/scenarios.rb').each do |scenario_rb|
+      files = []
+      files += Dir.glob(NestedScenarios::Builder.fixtures_dir + '/**/scenario.rb')
+      files += Dir.glob(NestedScenarios::Builder.fixtures_dir + '/**/scenarios.rb')
+
+      files.each do |scenario_rb|
         puts "Reading #{scenario_rb.gsub(RAILS_ROOT, '')} scenario file:"
         require scenario_rb
         puts 
