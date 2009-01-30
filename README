@@ -1,5 +1,9 @@
-NestedScenarios v0.1.1
-======================
+NestedScenarios
+License: MIT
+Version: 0.1.1
+
+Description
+-----------
 
 This plugin is based on FixtureScenarios and FixtureScenarioBuilder.
 It includes both worlds in just one plugin with some fixes, new features
@@ -19,7 +23,9 @@ You can check them at:
     Info: http://code.google.com/p/fixture-scenarios/
     SVN : http://fixture-scenarios.googlecode.com/svn/trunk/fixture_scenarios
 
-== Install
+
+Install
+-------
 
 Install NestedScenarios is very easy. It is stored in GitHub, so if you have
 never installed a gem via GitHub run the following:
@@ -40,7 +46,9 @@ If you want it as plugin, just do:
     git clone git://github.com/josevalim/nested_scenarios.git
     rm -rf vendor/plugins/nested_scenarios/.git
 
-== Why?
+
+Why?
+----
 
 You may, from time to time, wish to build your fixtures entirely in Ruby.
 Doing so has its advantages, such as automatically created join tables
@@ -49,7 +57,9 @@ nice features in Rails which are difficult to abandon: transactional fixtures,
 table_name(:key) helpers and auto-clearing between tests. This plugin allow to
 get the best of both worlds.
 
-== What's new?
+
+What's new?
+-----------
 
 FixtureScenario is totally rewritten: it's lighter, smaller and faster.
 
@@ -59,7 +69,9 @@ call it explicitly using rake db:scenario:build.
 
 Finally Rails 2.2 support was also added.
 
-== Usage
+
+Usage
+-----
 
 Using the +scenario+ method within <tt>scenarios.rb</tt> file,
 NestedScenarios can create your YAML fixtures automatically at run time.
@@ -182,3 +194,29 @@ Or, in the case of nested scenarios:
   scenario :models => { :users => :banned }
 
 If no scenario is sent after all, the default behaviour is adopted.
+
+
+Fixtures path
+-------------
+
+If you have fixtures in your fixtures path root and you want those fixtures
+to also be loaded, you can configure:
+
+  NestedScenarios.load_root_fixtures = true
+
+You can disable such behaviour in your tests also, by doing:
+
+  scenario :models => { :users => :banned }, :root => false
+
+You just have to remember if you have a scenario with fixtures for a specified
+table, it will overwrite the fixtures in your root path for the same table.
+
+Bugs and Feedback
+-----------------
+
+If you discover any bugs, please send an e-mail to jose.valim@gmail.com
+If you just want to give some positive feedback or drop a line, that's fine too! =)
+
+Copyright (c) 2009 José Valim
+http://www.pagestacker.com/
+http://josevalim.blogspot.com/
