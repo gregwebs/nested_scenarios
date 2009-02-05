@@ -1,6 +1,6 @@
 NestedScenarios
 License: MIT
-Version: 0.1.1
+Version: 0.2
 
 Description
 -----------
@@ -27,24 +27,22 @@ You can check them at:
 Install
 -------
 
-Install NestedScenarios is very easy. It is stored in GitHub, so if you have
-never installed a gem via GitHub run the following:
+Install Nested Scenarios is very easy. If you are using Rails 2.3.0, just do:
 
-  gem sources -a http://gems.github.com
-
-Then install the gem:
-
-  sudo gem install josevalim-nested_scenarios
-
-In RAILS_ROOT/config/environment.rb:
-
-  config.gem "josevalim-nested_scenarios",  :lib => "nested_scenarios", :source => "http://gems.github.com"
+   gem sources -a http://gems.github.com
+   sudo gem install josevalim-nested_scenarios
 
 If you want it as plugin, just do:
 
+   script/plugin install git://github.com/josevalim/nested_scenarios.git
+
+If you are running on Rails 2.2.x, you should use Nested Scenarios v0.1.1:
+
     cd myapp
     git clone git://github.com/josevalim/nested_scenarios.git
-    rm -rf vendor/plugins/nested_scenarios/.git
+    cd vendor/plugins/nested_scenarios
+    git checkout v0.1.1
+    rm -rf ./.git
 
 
 Why?
