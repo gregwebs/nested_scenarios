@@ -1,13 +1,5 @@
 class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
-  cattr_accessor :current_fixture_path
-  @@all_cached_fixtures = {}
-
-  # Overwrite cache for connection to take into account the current fixture path.
-  def self.cache_for_connection(connection)
-    @@all_cached_fixtures[connection.object_id] ||= {}
-    @@all_cached_fixtures[connection.object_id][@@current_fixture_path] ||= {}
-    @@all_cached_fixtures[connection.object_id][@@current_fixture_path]
-  end
+  cattr_accessor :current_fixtures
 
   def self.destroy_fixtures(table_names)
     NestedScenarios.delete_tables(table_names)
@@ -16,7 +8,7 @@ end
 
 module ActiveRecord #:nodoc:
   module TestFixtures #:nodoc:
-  
+
     def self.included(base)
       base.class_eval do
         setup :setup_fixtures
@@ -92,14 +84,18 @@ module ActiveRecord #:nodoc:
       def load_fixtures
         @loaded_fixtures = {}
 
-        if self.load_root_fixtures
-          Fixtures.current_fixture_path = self.fixture_path
-          root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names)
+        current_fixtures = self.fixture_path.to_s + self.scenario_path.to_s
+        if Fixtures.current_fixtures != current_fixtures
+          Fixtures.current_fixtures = current_fixtures
+          Fixtures.reset_cache
         end
 
         if self.scenario_path
-          Fixtures.current_fixture_path = self.scenario_path
           scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names)
+        end
+
+        if self.load_root_fixtures
+          root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names)
         end
 
         [root_fixtures, scenario_fixtures].each do |fixtures|
