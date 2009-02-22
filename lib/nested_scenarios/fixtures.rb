@@ -1,4 +1,14 @@
 class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
+  cattr_accessor :current_fixture_path
+  @@all_cached_fixtures = {}
+
+  # Overwrite cache for connection to take into account the current fixture path.
+  def self.cache_for_connection(connection)
+    @@all_cached_fixtures[connection.object_id] ||= {}
+    @@all_cached_fixtures[connection.object_id][@@current_fixture_path] ||= {}
+    @@all_cached_fixtures[connection.object_id][@@current_fixture_path]
+  end
+
   def self.destroy_fixtures(table_names)
     NestedScenarios.delete_tables(table_names)
   end
@@ -40,10 +50,10 @@ module ActiveRecord #:nodoc:
       def scenario(scenario_name = nil, options = {})
         case scenario_name
           when Hash
-            self.load_root_fixtures = scenario_name.delete(:root) unless scenario_name[:root].nil?
+            self.load_root_fixtures = scenario_name.delete(:root) if scenario_name.key? :root
             scenario_name = scenario_name.join('/')
           when Symbol, String
-            self.load_root_fixtures = options.delete(:root) unless options[:root].nil?
+            self.load_root_fixtures = options.delete(:root) if options.key? :root
             scenario_name = scenario_name.to_s
           else
             raise ArgumentError, "Scenario must be a symbol, string or hash. You gave #{scenario_name.class}."
@@ -83,10 +93,12 @@ module ActiveRecord #:nodoc:
         @loaded_fixtures = {}
 
         if self.load_root_fixtures
+          Fixtures.current_fixture_path = self.fixture_path
           root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names)
         end
 
         if self.scenario_path
+          Fixtures.current_fixture_path = self.scenario_path
           scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names)
         end
 
@@ -106,16 +118,15 @@ module ActiveRecord #:nodoc:
 
         Fixtures.destroy_fixtures(self.fixture_table_names)
 
-        unless use_transactional_fixtures?
+        unless run_in_transaction?
           Fixtures.reset_cache
         end
 
         # Rollback changes if a transaction is active.
-        if use_transactional_fixtures? && ActiveRecord::Base.connection.open_transactions != 0
+        if run_in_transaction? && ActiveRecord::Base.connection.open_transactions != 0
           ActiveRecord::Base.connection.rollback_db_transaction
           ActiveRecord::Base.connection.decrement_open_transactions
         end
-
         ActiveRecord::Base.clear_active_connections!
       end
 
