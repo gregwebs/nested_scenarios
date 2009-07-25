@@ -138,7 +138,7 @@ file will look something like this:
 Notice how the keys correspond to the user names. You can register fields that
 can be used as fixtures names by:
 
-  NestedScenarios.record_name_fields += [ :nickname ]
+  NestedScenarios.record_name_fields += [ "nickname" ]
 
 You can also assign your records to instance variables, then call +names_from_ivars!+
 at the conclusion of your +scenario+ block.
