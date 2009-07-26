@@ -4,6 +4,44 @@ class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
   def self.destroy_fixtures(table_names)
     NestedScenarios.delete_tables(table_names)
   end
+  
+  def self.create_fixtures(fixtures_directory, table_names, class_names = {})
+    table_names = [table_names].flatten.map { |n| n.to_s }
+    # Support for loading root-level fixtures: fixture cache keys based on fixture path + table name.  
+    fixture_keys = table_names.inject({}){|collector, table_name| collector[table_name] = "#{fixtures_directory}/#{table_name}"; collector}
+    connection  = block_given? ? yield : ActiveRecord::Base.connection
+
+    table_names_to_fetch = table_names.reject { |table_name| fixture_is_cached?(connection, fixture_keys[table_name]) }
+    unless table_names_to_fetch.empty?
+      ActiveRecord::Base.silence do
+        connection.disable_referential_integrity do
+          fixtures_map = {}
+
+          fixtures = table_names_to_fetch.map do |table_name|
+            fixtures_map[fixture_keys[table_name]] = Fixtures.new(connection, File.split(table_name.to_s).last, class_names[table_name.to_sym], File.join(fixtures_directory, table_name.to_s))
+          end
+
+          all_loaded_fixtures.update(fixtures_map)
+
+          connection.transaction(:requires_new => true) do
+            fixtures.reverse.each { |fixture| fixture.delete_existing_fixtures }
+            fixtures.each { |fixture| fixture.insert_fixtures }
+
+            # Cap primary key sequences to max(pk).
+            if connection.respond_to?(:reset_pk_sequence!)
+              table_names.each do |table_name|
+                connection.reset_pk_sequence!(table_name)
+              end
+            end
+          end
+
+          cache_fixtures(connection, fixtures_map)
+        end
+      end
+    end
+    # cached_fixtures(connection, table_names)
+    cached_fixtures(connection, fixture_keys.values)
+  end
 end
 
 module ActiveRecord #:nodoc:
@@ -32,7 +70,7 @@ module ActiveRecord #:nodoc:
         superclass_delegating_accessor :load_root_fixtures
         superclass_delegating_accessor :root_table_names
         superclass_delegating_accessor :scenario_table_names
-        self.load_root_fixtures = false
+        self.load_root_fixtures = true
       end
 
       base.extend ClassMethods
@@ -42,10 +80,10 @@ module ActiveRecord #:nodoc:
       def scenario(scenario_name = nil, options = {})
         case scenario_name
           when Hash
-            self.load_root_fixtures = scenario_name.delete(:root) if scenario_name.key? :root
+            # self.load_root_fixtures = scenario_name.delete(:root) if scenario_name.key? :root
             scenario_name = scenario_name.join('/')
           when Symbol, String
-            self.load_root_fixtures = options.delete(:root) if options.key? :root
+            # self.load_root_fixtures = options.delete(:root) if options.key? :root
             scenario_name = scenario_name.to_s
           else
             raise ArgumentError, "Scenario must be a symbol, string or hash. You gave #{scenario_name.class}."
@@ -57,7 +95,7 @@ module ActiveRecord #:nodoc:
 
       def fixtures(*table_names)
         if table_names.first == :all
-          self.root_table_names = self.load_root_fixtures ? load_table_names_in_path(self.fixture_path) : []
+          self.root_table_names = load_table_names_in_path(self.fixture_path)
           self.scenario_table_names = self.scenario_path ? load_table_names_in_path(self.scenario_path) : []
 
           table_names = self.root_table_names + self.scenario_table_names
@@ -83,7 +121,6 @@ module ActiveRecord #:nodoc:
     private
       def load_fixtures
         @loaded_fixtures = {}
-
         current_fixtures = self.fixture_path.to_s + self.scenario_path.to_s
         if Fixtures.current_fixtures != current_fixtures
           Fixtures.current_fixtures = current_fixtures
@@ -94,18 +131,26 @@ module ActiveRecord #:nodoc:
           scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names)
         end
 
-        if self.load_root_fixtures
+        # if self.load_root_fixtures
           root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names)
-        end
-
+        # end
         [root_fixtures, scenario_fixtures].each do |fixtures|
           next if fixtures.nil?
 
           if fixtures.instance_of?(Fixtures)
-            @loaded_fixtures[fixtures.table_name] = fixtures
+            if @loaded_fixtures[fixtures.table_name]
+              @loaded_fixtures[fixtures.table_name] = @loaded_fixtures[fixtures.table_name].values + fixtures.values
+            else              
+              @loaded_fixtures[fixtures.table_name] = fixtures
+            end
+            p 
           else
             fixtures.each { |f| @loaded_fixtures[f.table_name] = f }
           end
+          # require 'ruby-debug'; debugger
+          # p 22222222222222
+          # p @loaded_fixtures
+          # p 333333333333333
         end
       end
 

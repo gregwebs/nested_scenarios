@@ -18,11 +18,11 @@ class NestedScenarios
     ActiveRecord::Base.connection.tables - @@skip_tables
   end
 
-  def self.load_root_fixtures=(value)
-    Test::Unit::TestCase.load_root_fixtures = value
-  end
-
-  def self.load_root_fixtures
-    Test::Unit::TestCase.load_root_fixtures
-  end
+  # def self.load_root_fixtures=(value)
+  #    Test::Unit::TestCase.load_root_fixtures = value
+  #  end
+  # 
+  #  def self.load_root_fixtures
+  #    Test::Unit::TestCase.load_root_fixtures
+  #  end
 end
