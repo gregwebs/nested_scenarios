@@ -1,13 +1,11 @@
 class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
-  cattr_accessor :current_fixtures, :cleared_fixtures
+  cattr_accessor :current_fixtures
 
   def self.destroy_fixtures(table_names)
     NestedScenarios.delete_tables(table_names)
   end
   
-  def self.create_fixtures(fixtures_directory, table_names, class_names = {})
-    self.cleared_fixtures ||= []
-
+  def self.create_fixtures(fixtures_directory, table_names, class_names = {}, clear_fixtures = true)
     table_names = [table_names].flatten.map { |n| n.to_s }
     # Support for loading root-level fixtures: fixture cache keys based on fixture path + table name.  
     fixture_keys = table_names.inject({}){|collector, table_name| collector[table_name] = "#{fixtures_directory}/#{table_name}"; collector}
@@ -26,13 +24,7 @@ class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
           all_loaded_fixtures.update(fixtures_map)
 
           connection.transaction(:requires_new => true) do
-            fixtures.reverse.each do |fixture|
-              unless(cleared_fixtures.include?(fixture.table_name))
-                fixture.delete_existing_fixtures
-                cleared_fixtures << fixture.table_name
-              end
-
-            end
+            fixtures.reverse.each { |fixture| fixture.delete_existing_fixtures } if clear_fixtures
             fixtures.each { |fixture| fixture.insert_fixtures }
 
             # Cap primary key sequences to max(pk).
@@ -135,13 +127,16 @@ module ActiveRecord #:nodoc:
           Fixtures.reset_cache
         end
 
+        # if self.load_root_fixtures
+        # always clear the currently loaded fixtures.
+        root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names)
+        # end
+
         if self.scenario_path
-          scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names)
+          # no need to clear the fixtures again... if you do, you'll clear the root fixtures
+          scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names, false)
         end
 
-        # if self.load_root_fixtures
-          root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names)
-        # end
         [root_fixtures, scenario_fixtures].each do |fixtures|
           next if fixtures.nil?
 
