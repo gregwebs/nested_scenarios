@@ -151,7 +151,6 @@ module ActiveRecord #:nodoc:
             else
               @loaded_fixtures[fixtures.table_name] = fixtures
             end
-            p 
           else
             fixtures.each { |f| @loaded_fixtures[f.table_name] = f }
           end
