@@ -1,11 +1,13 @@
 class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
-  cattr_accessor :current_fixtures
+  cattr_accessor :current_fixtures, :cleared_fixtures
 
   def self.destroy_fixtures(table_names)
     NestedScenarios.delete_tables(table_names)
   end
   
   def self.create_fixtures(fixtures_directory, table_names, class_names = {})
+    self.cleared_fixtures ||= []
+
     table_names = [table_names].flatten.map { |n| n.to_s }
     # Support for loading root-level fixtures: fixture cache keys based on fixture path + table name.  
     fixture_keys = table_names.inject({}){|collector, table_name| collector[table_name] = "#{fixtures_directory}/#{table_name}"; collector}
@@ -24,7 +26,13 @@ class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
           all_loaded_fixtures.update(fixtures_map)
 
           connection.transaction(:requires_new => true) do
-            fixtures.reverse.each { |fixture| fixture.delete_existing_fixtures }
+            fixtures.reverse.each do |fixture|
+              unless(cleared_fixtures.include?(fixture.table_name))
+                fixture.delete_existing_fixtures
+                cleared_fixtures << fixture.table_name
+              end
+
+            end
             fixtures.each { |fixture| fixture.insert_fixtures }
 
             # Cap primary key sequences to max(pk).
@@ -139,18 +147,14 @@ module ActiveRecord #:nodoc:
 
           if fixtures.instance_of?(Fixtures)
             if @loaded_fixtures[fixtures.table_name]
-              @loaded_fixtures[fixtures.table_name] = @loaded_fixtures[fixtures.table_name].values + fixtures.values
-            else              
+              fixtures.each{|fixture| @loaded_fixtures[fixtures.table_name] << fixture }
+            else
               @loaded_fixtures[fixtures.table_name] = fixtures
             end
             p 
           else
             fixtures.each { |f| @loaded_fixtures[f.table_name] = f }
           end
-          # require 'ruby-debug'; debugger
-          # p 22222222222222
-          # p @loaded_fixtures
-          # p 333333333333333
         end
       end
 
