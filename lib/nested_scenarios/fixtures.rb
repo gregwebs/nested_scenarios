@@ -70,7 +70,7 @@ module ActiveRecord #:nodoc:
         superclass_delegating_accessor :load_root_fixtures
         superclass_delegating_accessor :root_table_names
         superclass_delegating_accessor :scenario_table_names
-        self.load_root_fixtures = true
+        self.load_root_fixtures = false
       end
 
       base.extend ClassMethods
@@ -80,10 +80,10 @@ module ActiveRecord #:nodoc:
       def scenario(scenario_name = nil, options = {})
         case scenario_name
           when Hash
-            # self.load_root_fixtures = scenario_name.delete(:root) if scenario_name.key? :root
+            self.load_root_fixtures = scenario_name.delete(:root) if scenario_name.key? :root
             scenario_name = scenario_name.join('/')
           when Symbol, String
-            # self.load_root_fixtures = options.delete(:root) if options.key? :root
+            self.load_root_fixtures = options.delete(:root) if options.key? :root
             scenario_name = scenario_name.to_s
           else
             raise ArgumentError, "Scenario must be a symbol, string or hash. You gave #{scenario_name.class}."
@@ -112,7 +112,7 @@ module ActiveRecord #:nodoc:
 
       private
         def load_table_names_in_path(path)
-          table_names = Dir["#{path}/*.yml"] + Dir["#{path}/*.csv"]
+          table_names = Dir["#{path}/*.yml"]# + Dir["#{path}/*.csv"] # no CSVs, please.
           table_names.map! { |f| File.basename(f).split('.')[0..-2].join('.') }
           return table_names
         end
@@ -127,14 +127,14 @@ module ActiveRecord #:nodoc:
           Fixtures.reset_cache
         end
 
-        # if self.load_root_fixtures
-        # always clear the currently loaded fixtures.
-        root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names, true)
-        # end
+         if self.load_root_fixtures || self.scenario_path.blank?
+          # always clear the currently loaded fixtures.
+          root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names, true)
+         end
 
         if self.scenario_path
           # no need to clear the fixtures again... if you do, you'll clear the root fixtures
-          scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names, false)
+          scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names, !self.load_root_fixtures)
         end
 
         [root_fixtures, scenario_fixtures].each do |fixtures|
