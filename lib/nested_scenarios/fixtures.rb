@@ -133,8 +133,9 @@ module ActiveRecord #:nodoc:
          end
 
         if self.scenario_path
+          Fixtures.destroy_fixtures(self.root_table_names) unless self.load_root_fixtures
           # no need to clear the fixtures again... if you do, you'll clear the root fixtures
-          scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names, !self.load_root_fixtures)
+          scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names, false)
         end
 
         [root_fixtures, scenario_fixtures].each do |fixtures|
@@ -156,22 +157,22 @@ module ActiveRecord #:nodoc:
         end
       end
 
-      def teardown_fixtures
-        return unless defined?(ActiveRecord) && !ActiveRecord::Base.configurations.blank?
-
-        Fixtures.destroy_fixtures(self.fixture_table_names)
-
-        unless run_in_transaction?
-          Fixtures.reset_cache
-        end
-
-        # Rollback changes if a transaction is active.
-        if run_in_transaction? && ActiveRecord::Base.connection.open_transactions != 0
-          ActiveRecord::Base.connection.rollback_db_transaction
-          ActiveRecord::Base.connection.decrement_open_transactions
-        end
-        ActiveRecord::Base.clear_active_connections!
-      end
+      #def teardown_fixtures
+      #  return unless defined?(ActiveRecord) && !ActiveRecord::Base.configurations.blank?
+      #
+      #  Fixtures.destroy_fixtures(self.fixture_table_names)
+      #
+      #  unless run_in_transaction?
+      #    Fixtures.reset_cache
+      #  end
+      #
+      #  # Rollback changes if a transaction is active.
+      #  if run_in_transaction? && ActiveRecord::Base.connection.open_transactions != 0
+      #    ActiveRecord::Base.connection.rollback_db_transaction
+      #    ActiveRecord::Base.connection.decrement_open_transactions
+      #  end
+      #  ActiveRecord::Base.clear_active_connections!
+      #end
 
   end
 end
