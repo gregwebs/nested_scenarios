@@ -129,7 +129,7 @@ module ActiveRecord #:nodoc:
 
         # if self.load_root_fixtures
         # always clear the currently loaded fixtures.
-        root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names)
+        root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names, true)
         # end
 
         if self.scenario_path
@@ -141,14 +141,18 @@ module ActiveRecord #:nodoc:
           next if fixtures.nil?
 
           if fixtures.instance_of?(Fixtures)
-            if @loaded_fixtures[fixtures.table_name]
-              fixtures.each{|fixture| @loaded_fixtures[fixtures.table_name] << fixture }
-            else
-              @loaded_fixtures[fixtures.table_name] = fixtures
-            end
+            update_loaded_fixtures(fixtures)
           else
-            fixtures.each { |f| @loaded_fixtures[f.table_name] = f }
+            fixtures.each { |f| update_loaded_fixtures(f) }
           end
+        end
+      end
+    
+      def update_loaded_fixtures(fixtures)
+        if @loaded_fixtures[fixtures.table_name]
+          fixtures.each{|fixture| @loaded_fixtures[fixtures.table_name] << fixture }
+        else
+          @loaded_fixtures[fixtures.table_name] = fixtures
         end
       end
 
