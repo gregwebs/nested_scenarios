@@ -1,5 +1,6 @@
 class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
   cattr_accessor :current_fixtures
+  cattr_accessor :test_class
 
   def self.destroy_fixtures(table_names)
     NestedScenarios.delete_tables(table_names)
@@ -156,6 +157,46 @@ module ActiveRecord #:nodoc:
           @loaded_fixtures[fixtures.table_name] = fixtures
         end
       end
+
+    def setup_fixtures_with_scenario_check
+      if (Fixtures.test_class != self.class)
+        Fixtures.reset_cache
+      end
+      Fixtures.test_class = self.class
+
+      setup_fixtures_without_scenario_check
+      #return unless defined?(ActiveRecord) && !ActiveRecord::Base.configurations.blank?
+      #
+      #if pre_loaded_fixtures && !use_transactional_fixtures
+      #  raise RuntimeError, 'pre_loaded_fixtures requires use_transactional_fixtures'
+      #end
+      #
+      #@fixture_cache = {}
+      #@@already_loaded_fixtures ||= {}
+      #
+      ## Load fixtures once and begin transaction.
+      #if run_in_transaction?
+      #  if @@already_loaded_fixtures[self.class]
+      #    @loaded_fixtures = @@already_loaded_fixtures[self.class]
+      #  else
+      #    load_fixtures
+      #    @@already_loaded_fixtures[self.class] = @loaded_fixtures
+      #  end
+      #  ActiveRecord::Base.connection.increment_open_transactions
+      #  ActiveRecord::Base.connection.transaction_joinable = false
+      #  ActiveRecord::Base.connection.begin_db_transaction
+      ## Load fixtures for every test.
+      #else
+      #  Fixtures.reset_cache
+      #  @@already_loaded_fixtures[self.class] = nil
+      #  load_fixtures
+      #end
+      #
+      ## Instantiate fixtures for every test if requested.
+      #instantiate_fixtures if use_instantiated_fixtures
+    end
+    alias_method_chain :setup_fixtures, :scenario_check
+
 
       #def teardown_fixtures
       #  return unless defined?(ActiveRecord) && !ActiveRecord::Base.configurations.blank?

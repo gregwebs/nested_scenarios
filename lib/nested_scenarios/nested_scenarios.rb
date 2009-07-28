@@ -7,8 +7,10 @@ class NestedScenarios
     connection = ActiveRecord::Base.connection
     ActiveRecord::Base.silence do
       connection.disable_referential_integrity do
-        (table_names - @@skip_tables).each do |table_name|
-          connection.delete "DELETE FROM #{table_name}", 'Fixture Delete'
+        connection.transaction do
+          (table_names - @@skip_tables).each do |table_name|
+            connection.delete "DELETE FROM #{table_name}", 'Fixture Delete'
+          end
         end
       end
     end
