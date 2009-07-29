@@ -128,7 +128,6 @@ module ActiveRecord #:nodoc:
           Fixtures.current_fixtures = current_fixtures
           Fixtures.reset_cache
         end
-        Fixtures.destroy_fixtures self.root_table_names
          if self.load_root_fixtures || self.scenario_path.blank?
           root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names)
          end
@@ -158,6 +157,7 @@ module ActiveRecord #:nodoc:
 
     def setup_fixtures_with_scenario_check
       if (Fixtures.current_test_class != self.class)
+        Fixtures.destroy_fixtures self.root_table_names
         Fixtures.reset_cache
       end
       Fixtures.current_test_class = self.class
