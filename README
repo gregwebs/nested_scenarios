@@ -213,6 +213,11 @@ You can disable such behaviour in your tests also, by doing:
 You just have to remember if you have a scenario with fixtures for a specified
 table, it will overwrite the fixtures in your root path for the same table.
 
+Contributors
+------------
+
+* Joe Moore (http://github.com/joemoore)
+
 Bugs and Feedback
 -----------------
 
