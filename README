@@ -200,7 +200,11 @@ Fixtures path
 If you have fixtures in your fixtures path root and you want those fixtures
 to also be loaded, you can configure:
 
-  NestedScenarios.load_root_fixtures = true
+class ActiveSupport::TestCase
+  ...
+  self.load_root_fixtures = true
+  ...
+end
 
 You can disable such behaviour in your tests also, by doing:
 
