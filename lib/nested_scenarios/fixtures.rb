@@ -1,14 +1,14 @@
 class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
   cattr_accessor :current_fixtures
-  cattr_accessor :test_class
+  cattr_accessor :current_test_class
 
   def self.destroy_fixtures(table_names)
     NestedScenarios.delete_tables(table_names)
   end
   
-  def self.create_fixtures(fixtures_directory, table_names, class_names = {}, clear_fixtures = true)
+  # Support for loading root-level fixtures: fixture cache keys based on fixture path + table name.  
+  def self.create_fixtures(fixtures_directory, table_names, class_names = {})
     table_names = [table_names].flatten.map { |n| n.to_s }
-    # Support for loading root-level fixtures: fixture cache keys based on fixture path + table name.  
     fixture_keys = table_names.inject({}){|collector, table_name| collector[table_name] = "#{fixtures_directory}/#{table_name}"; collector}
     connection  = block_given? ? yield : ActiveRecord::Base.connection
 
@@ -25,7 +25,8 @@ class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
           all_loaded_fixtures.update(fixtures_map)
 
           connection.transaction(:requires_new => true) do
-            fixtures.reverse.each { |fixture| fixture.delete_existing_fixtures } if clear_fixtures
+            
+            # fixtures.reverse.each { |fixture| fixture.delete_existing_fixtures } # done elsewhere now
             fixtures.each { |fixture| fixture.insert_fixtures }
 
             # Cap primary key sequences to max(pk).
@@ -127,16 +128,13 @@ module ActiveRecord #:nodoc:
           Fixtures.current_fixtures = current_fixtures
           Fixtures.reset_cache
         end
-
+        Fixtures.destroy_fixtures self.root_table_names
          if self.load_root_fixtures || self.scenario_path.blank?
-          # always clear the currently loaded fixtures.
-          root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names, true)
+          root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names)
          end
 
         if self.scenario_path
-          Fixtures.destroy_fixtures(self.root_table_names) unless self.load_root_fixtures
-          # no need to clear the fixtures again... if you do, you'll clear the root fixtures
-          scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names, false)
+          scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names)
         end
 
         [root_fixtures, scenario_fixtures].each do |fixtures|
@@ -159,61 +157,12 @@ module ActiveRecord #:nodoc:
       end
 
     def setup_fixtures_with_scenario_check
-      if (Fixtures.test_class != self.class)
+      if (Fixtures.current_test_class != self.class)
         Fixtures.reset_cache
       end
-      Fixtures.test_class = self.class
-
+      Fixtures.current_test_class = self.class
       setup_fixtures_without_scenario_check
-      #return unless defined?(ActiveRecord) && !ActiveRecord::Base.configurations.blank?
-      #
-      #if pre_loaded_fixtures && !use_transactional_fixtures
-      #  raise RuntimeError, 'pre_loaded_fixtures requires use_transactional_fixtures'
-      #end
-      #
-      #@fixture_cache = {}
-      #@@already_loaded_fixtures ||= {}
-      #
-      ## Load fixtures once and begin transaction.
-      #if run_in_transaction?
-      #  if @@already_loaded_fixtures[self.class]
-      #    @loaded_fixtures = @@already_loaded_fixtures[self.class]
-      #  else
-      #    load_fixtures
-      #    @@already_loaded_fixtures[self.class] = @loaded_fixtures
-      #  end
-      #  ActiveRecord::Base.connection.increment_open_transactions
-      #  ActiveRecord::Base.connection.transaction_joinable = false
-      #  ActiveRecord::Base.connection.begin_db_transaction
-      ## Load fixtures for every test.
-      #else
-      #  Fixtures.reset_cache
-      #  @@already_loaded_fixtures[self.class] = nil
-      #  load_fixtures
-      #end
-      #
-      ## Instantiate fixtures for every test if requested.
-      #instantiate_fixtures if use_instantiated_fixtures
     end
     alias_method_chain :setup_fixtures, :scenario_check
-
-
-      #def teardown_fixtures
-      #  return unless defined?(ActiveRecord) && !ActiveRecord::Base.configurations.blank?
-      #
-      #  Fixtures.destroy_fixtures(self.fixture_table_names)
-      #
-      #  unless run_in_transaction?
-      #    Fixtures.reset_cache
-      #  end
-      #
-      #  # Rollback changes if a transaction is active.
-      #  if run_in_transaction? && ActiveRecord::Base.connection.open_transactions != 0
-      #    ActiveRecord::Base.connection.rollback_db_transaction
-      #    ActiveRecord::Base.connection.decrement_open_transactions
-      #  end
-      #  ActiveRecord::Base.clear_active_connections!
-      #end
-
   end
 end
