@@ -156,7 +156,7 @@ module ActiveRecord #:nodoc:
       end
 
     def setup_fixtures_with_scenario_check
-      if (Fixtures.current_test_class != self.class)
+      if (Fixtures.current_test_class != self.class || !self.use_transactional_fixtures)
         Fixtures.destroy_fixtures self.root_table_names
         Fixtures.reset_cache
       end
