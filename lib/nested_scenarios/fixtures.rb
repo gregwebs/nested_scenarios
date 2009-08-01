@@ -5,7 +5,7 @@ class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
   def self.destroy_fixtures(table_names)
     NestedScenarios.delete_tables(table_names)
   end
-  
+
   # Support for loading root-level fixtures: fixture cache keys based on fixture path + table name.  
   def self.create_fixtures(fixtures_directory, table_names, class_names = {})
     table_names = [table_names].flatten.map { |n| n.to_s }
@@ -25,7 +25,7 @@ class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
           all_loaded_fixtures.update(fixtures_map)
 
           connection.transaction(:requires_new => true) do
-            
+
             # fixtures.reverse.each { |fixture| fixture.delete_existing_fixtures } # done elsewhere now
             fixtures.each { |fixture| fixture.insert_fixtures }
 
@@ -77,9 +77,11 @@ module ActiveRecord #:nodoc:
 
       base.extend ClassMethods
     end
-  
+
     module ClassMethods
       def scenario(scenario_name = nil, options = {})
+        NestedScenarios::Builder.rebuild_all_if_needed(scenario_name)
+
         case scenario_name
           when Hash
             self.load_root_fixtures = scenario_name.delete(:root) if scenario_name.key? :root
@@ -113,47 +115,49 @@ module ActiveRecord #:nodoc:
       end
 
       private
-        def load_table_names_in_path(path)
-          table_names = Dir["#{path}/*.yml"]# + Dir["#{path}/*.csv"] # no CSVs, please.
-          table_names.map! { |f| File.basename(f).split('.')[0..-2].join('.') }
-          return table_names
-        end
+
+      def load_table_names_in_path(path)
+        table_names = Dir["#{path}/*.yml"]# + Dir["#{path}/*.csv"] # no CSVs, please.
+        table_names.map! { |f| File.basename(f).split('.')[0..-2].join('.') }
+        return table_names
+      end
     end
 
     private
-      def load_fixtures
-        @loaded_fixtures = {}
-        current_fixtures = self.fixture_path.to_s + self.scenario_path.to_s
-        if Fixtures.current_fixtures != current_fixtures
-          Fixtures.current_fixtures = current_fixtures
-          Fixtures.reset_cache
-        end
-         if self.load_root_fixtures || self.scenario_path.blank?
-          root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names)
-         end
 
-        if self.scenario_path
-          scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names)
-        end
-
-        [root_fixtures, scenario_fixtures].each do |fixtures|
-          next if fixtures.nil?
-
-          if fixtures.instance_of?(Fixtures)
-            update_loaded_fixtures(fixtures)
-          else
-            fixtures.each { |f| update_loaded_fixtures(f) }
-          end
-        end
+    def load_fixtures
+      @loaded_fixtures = {}
+      current_fixtures = self.fixture_path.to_s + self.scenario_path.to_s
+      if Fixtures.current_fixtures != current_fixtures
+        Fixtures.current_fixtures = current_fixtures
+        Fixtures.reset_cache
       end
-    
-      def update_loaded_fixtures(fixtures)
-        if @loaded_fixtures[fixtures.table_name]
-          fixtures.each{|fixture| @loaded_fixtures[fixtures.table_name] << fixture }
+      if self.load_root_fixtures || self.scenario_path.blank?
+        root_fixtures = Fixtures.create_fixtures(self.fixture_path, self.root_table_names, fixture_class_names)
+      end
+
+      if self.scenario_path
+        scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names)
+      end
+
+      [root_fixtures, scenario_fixtures].each do |fixtures|
+        next if fixtures.nil?
+
+        if fixtures.instance_of?(Fixtures)
+          update_loaded_fixtures(fixtures)
         else
-          @loaded_fixtures[fixtures.table_name] = fixtures
+          fixtures.each { |f| update_loaded_fixtures(f) }
         end
       end
+    end
+
+    def update_loaded_fixtures(fixtures)
+      if @loaded_fixtures[fixtures.table_name]
+        fixtures.each{|fixture| @loaded_fixtures[fixtures.table_name] << fixture }
+      else
+        @loaded_fixtures[fixtures.table_name] = fixtures
+      end
+    end
 
     def setup_fixtures_with_scenario_check
       if (Fixtures.current_test_class != self.class || !self.use_transactional_fixtures)
@@ -163,6 +167,7 @@ module ActiveRecord #:nodoc:
       Fixtures.current_test_class = self.class
       setup_fixtures_without_scenario_check
     end
+
     alias_method_chain :setup_fixtures, :scenario_check
   end
 end
