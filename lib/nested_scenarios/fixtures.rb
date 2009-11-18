@@ -8,7 +8,7 @@ class Fixtures < (RUBY_VERSION < '1.9' ? YAML::Omap : Hash)
 
   # Support for loading root-level fixtures: fixture cache keys based on fixture path + table name.  
   def self.create_fixtures(fixtures_directory, table_names, class_names = {})
-    table_names = [table_names].flatten.map { |n| n.to_s }
+    table_names = [table_names].flatten.compact.map { |n| n.to_s }
     fixture_keys = table_names.inject({}){|collector, table_name| collector[table_name] = "#{fixtures_directory}/#{table_name}"; collector}
     connection  = block_given? ? yield : ActiveRecord::Base.connection
 
