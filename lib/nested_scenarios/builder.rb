@@ -153,7 +153,8 @@ class NestedScenarios::Builder
   end
 
   def dump_tables
-    fixtures = NestedScenarios.tables.inject([]) do |files, @table_name|
+    fixtures = NestedScenarios.tables.inject([]) do |files, table_name|
+      @table_name = table_name
       rows = ActiveRecord::Base.connection.select_all(@@select_sql % @table_name)
       next files if rows.empty?
 
