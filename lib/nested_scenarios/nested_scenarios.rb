@@ -7,14 +7,25 @@ class NestedScenarios
     connection = ActiveRecord::Base.connection
     ActiveRecord::Base.silence do
       connection.disable_referential_integrity do
-        (table_names - @@skip_tables).each do |table_name|
+        tables.each do |table_name|
           connection.delete "DELETE FROM #{table_name}", 'Fixture Delete'
         end
       end
     end
   end
 
-  def self.tables
-    ActiveRecord::Base.connection.tables - @@skip_tables
+  def self.existing_ids
+    connection = ActiveRecord::Base.connection
+    tables.inject({}) do |h,table_name|
+      h[table_name] =
+        connection.select_values "SELECT id FROM #{table_name}", 'Fixture Select'
+      h
+    end
+  end
+
+  def self.tables(table_names = ActiveRecord::Base.connection.tables - @@skip_tables)
+    t_names = (table_names - @@skip_tables)
+    return t_names unless block_given? 
+    t_names.each { |table_name| yield table_name }
   end
 end

@@ -86,13 +86,13 @@ class NestedScenarios::Builder
 
   def build
     say "Building scenario `#{@scenario}'"
-    NestedScenarios.delete_tables
+    existing_ids = NestedScenarios.existing_ids
 
     surface_errors { instance_eval(&@block) }
     FileUtils.mkdir_p self.class.fixtures_dir(@scenario)
     FileUtils.touch self.class.fixtures_dir(@scenario)
 
-    dump_tables
+    dump_tables(existing_ids)
   end
 
   def names_from_ivars!
@@ -152,13 +152,17 @@ class NestedScenarios::Builder
     "#{@table_name}_#{@row_index.succ!}"
   end
 
-  def dump_tables
+  def dump_tables(existing_ids = {})
     fixtures = NestedScenarios.tables.inject([]) do |files, table_name|
       @table_name = table_name
-      rows = ActiveRecord::Base.connection.select_all(@@select_sql % @table_name)
+      sql = @@select_sql % @table_name
+      if ex_ids = existing_ids[table_name] and ex_ids.present?
+        sql += " WHERE id NOT IN (#{ex_ids.join(',')})"
+      end
+      rows = ActiveRecord::Base.connection.select_all(sql)
       next files if rows.empty?
 
-      @row_index      = '000'
+      @row_index    = '000'
       @record_names = []
       fixture_data = rows.inject({}) do |hash, record|
         hash.merge(record_name(record) => record)
