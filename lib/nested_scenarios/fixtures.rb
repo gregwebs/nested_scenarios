@@ -138,6 +138,7 @@ module ActiveRecord #:nodoc:
 
       if self.scenario_path
         scenario_fixtures = Fixtures.create_fixtures(self.scenario_path, self.scenario_table_names, fixture_class_names)
+        fail "no fixtures found for #{self.scenario_path}" if scenario_fixtures.blank?
       end
 
       [root_fixtures, scenario_fixtures].each do |fixtures|
