@@ -36,7 +36,7 @@ class NestedScenarios::Builder
   end
 
   def self.fixtures_dir(*paths)
-    File.join(RAILS_ROOT, spec_or_test_dir, 'fixtures', *paths)
+    File.join(RAILS_ROOT, ENV['FIXTURES_DIR'] || (spec_or_test_dir + '/fixtures'), *paths)
   end
 
   def self.spec_or_test_dir
