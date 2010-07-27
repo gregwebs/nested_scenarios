@@ -82,6 +82,7 @@ class NestedScenarios::Builder
 
     @block        = block
     @custom_names = {}
+    @model_by_custom_name = {}
   end
 
   def build
@@ -99,6 +100,18 @@ class NestedScenarios::Builder
     instance_values.each do |var, value|
       name(var, value) if value.is_a? ActiveRecord::Base
     end
+  end
+
+  def make_name n, model_object
+    # to_s is important- because string could be multi-byte wrapped
+    @model_by_custom_name[[model_object.class,  name(n, model_object).to_s]] = model_object
+  end
+
+  # object store - lookup by 
+  def O(klass, custom_name)
+    @model_by_custom_name.fetch([klass, custom_name.to_s]) {|k|
+      raise IndexError, "key not found: #{k.inspect}"
+    }
   end
 
   protected
@@ -131,7 +144,6 @@ class NestedScenarios::Builder
   def name(custom_name, model_object)
     key = [model_object.class.name, model_object.id]
     @custom_names[key] = custom_name
-    model_object
   end
 
   def record_name(record_hash)
